@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<!--
+
+nosx.hta version 1.0
+
+Clean up junk files left behind by OS X
+
+by Mark Shroyer - http://markshroyer.com/
+Wed Oct 27 22:45:30 EDT 2010
+
+-->
+
+<html xmlns="http://www.w3.org/1999/xhtml" >
+  <head>
+    <title>nosx</title>
+    <hta:application
+        applicationname="nosx"
+        windowstate="normal"
+        scroll="no"
+        />
+
+    <style type="text/css">
+      body {
+          font-family: "Verdana";
+          font-size: 10pt;
+          background-color: #eee;
+      }
+      div#controls {
+          text-align: center;
+          margin-top: 40px;
+      }
+      div#controls input[type="text"] {
+          width: 240px;
+      }
+      div#controls input[type="button"] {
+          width: 70px;
+      }
+      div#statusline {
+          text-align: center;
+          font-style: italic;
+          margin-top: 2em;
+          color: #444;
+      }
+    </style>
+
+    <script type="text/javascript">
+      /* <![CDATA[ */
+
+      var BIF_EDITBOX        = 0x00000010;
+      var BIF_VALIDATE       = 0x00000020;
+      var BIF_NEWDIALOGSTYLE = 0x00000040;
+      var BIF_USENEWUI       = BIF_EDITBOX | BIF_NEWDIALOGSTYLE;
+
+      var sa = new ActiveXObject('Shell.Application');
+      var fs = new ActiveXObject('Scripting.FileSystemObject');
+
+      window.resizeTo(480, 260);
+
+      function StatusReport() {
+          this.removedCount = 0;
+          this.errorItems = [];
+      }
+      StatusReport.prototype.logRemoved = function (item) {
+          this.removedCount++;
+      }
+      StatusReport.prototype.getRemoved = function () {
+          return this.removedCount;
+      }
+      StatusReport.prototype.logError = function (item) {
+          this.errorItems.push(item);
+      }
+      StatusReport.prototype.getErrors = function () {
+          return this.errorItems.length;
+      }
+      StatusReport.prototype.notifyErrors = function () {
+          var note = "Was unable to remove the following items:\n\n";
+          for ( var i = 0; i < this.errorItems.length; i++ ) {
+              note = note + this.errorItems[i] + "\n";
+          }
+          window.alert(note);
+      }
+
+      function cleanFolderTree(folder, report) {
+          var fileEnum = new Enumerator(folder.Files);
+          while ( ! fileEnum.atEnd() ) {
+              var file = fileEnum.item();
+              if ( file.Name == '.DS_Store' || file.Name.match(/^._/) ) {
+                  try {
+                      file.Delete(true);
+                      report.logRemoved(file);
+                  } catch (err) {
+                      report.logError(file);
+                  }
+              }
+              fileEnum.moveNext();
+          }
+
+          var folderEnum = new Enumerator(folder.SubFolders);
+          while ( ! folderEnum.atEnd() ) {
+              var folder = folderEnum.item();
+              if ( folder.Name == '.Trashes' ) {
+                  try {
+                      folder.Delete(true);
+                      report.logRemoved(folder);
+                  } catch (err) {
+                      report.logError(folder);
+                  }
+              } else {
+                  cleanFolderTree(folder, report);
+              }
+              folderEnum.moveNext();
+          }
+      }
+
+      // Browse button event handler.
+      function browse() {
+          var target     = document.getElementById('target');
+          var selection = sa.BrowseForFolder(
+              0,
+              'Please select a folder to clean...',
+              BIF_VALIDATE
+          );
+          if ( selection ) {
+              var path = selection.Self.Path;
+
+              // Some non-physical items exist in the folder selection
+              // dialog, e.g. "Computer", etc., and choosing one of these
+              // results in a GUID beginning with "::".  Don't set the
+              // target input field if the user selects one of these...
+              if ( ! path.match(/^::/) )
+                  target.value = path;
+          }
+      }
+
+      function nify(n, singular, plural) {
+          if ( n == 1 )
+              return n.toString() + " " + singular;
+          else
+              return n.toString() + " " + plural;
+      }
+
+      // Clean button event handler; entry point for the cleanFolderTree()
+      // recursive function.
+      function clean() {
+          var statusline  = document.getElementById('statusline');
+
+          var path = document.getElementById('target').value;
+          if ( fs.FolderExists(path) ) {
+
+              // If the user entered a valid folder path...
+              
+              var folder = fs.GetFolder(path);
+              var report = new StatusReport();
+
+              cleanFolderTree(folder, report);
+
+              // Good grammar.  Its importent.
+              if ( report.getErrors() == 0 ) {
+                  if ( report.getRemoved() == 0 ) {
+                      statusline.innerHTML = 'Cleaned '
+                          + folder.Name
+                          + ': Nothing to remove!';
+                  } else {
+                      statusline.innerHTML = 'Cleaned '
+                          + folder.Name
+                          + ': Removed '
+                          + nify(report.getRemoved(), 'item', 'items')
+                          + '.';
+                  }
+              } else {
+                  statusline.innerHTML = 'Cleaned '
+                      + folder.Name
+                      + ': Removed '
+                      + nify(report.getRemoved(), 'item', 'items')
+                      + ', encountered <a href="#" id="errorlink">'
+                      + nify(report.getErrors(), 'error', 'errors')
+                      + '</a>.';
+                  document.getElementById('errorlink').onclick = function () {
+                      report.notifyErrors();
+                  }
+              }                  
+          } else {
+
+              // Or if the user-provided folder path was less valid...
+              statusline.innerHTML = "That's not a valid folder. "
+                  + "Try the Browse button...";
+
+          }
+      }
+
+      /* ]]> */
+    </script>
+  </head>
+
+  <body>
+    <p>Select a folder from which to remove the junk files
+    (<code>.DS_Store</code>, <code>.Trashes</code>, <code>._*</code>) left
+    on shared media by OS X.  <a
+    href="http://www.westwind.com/reference/os-x/invisibles.html">Click
+    here</a> for information about these files.</p>
+
+    <div id="controls">
+      <input type="text" id="target" value="" />
+      <input type="button" id="browse" value="Browse" onclick="browse();" />
+      <input type="button" id="clean" value="Clean!" onclick="clean();" />
+    </div>
+
+    <div id="statusline"></div>
+  </body>
+</html>
