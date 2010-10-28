@@ -160,23 +160,27 @@ Wed Oct 27 22:45:30 EDT 2010
 
               cleanFolderTree(folder, report, recurse.checked);
 
+              // folder.Name doesn't work for drive root directories.
+              var name = folder.Name || path;
+              if ( name.match(/^[a-zA-Z]:\\?$/) )
+                  name = name.substr(0, 1);
 
               // Good grammar.  Its importent.
               if ( report.getErrors() == 0 ) {
                   if ( report.getRemoved() == 0 ) {
                       statusline.innerHTML = 'Cleaned '
-                          + folder.Name
+                          + name
                           + ': Nothing to remove!';
                   } else {
                       statusline.innerHTML = 'Cleaned '
-                          + folder.Name
+                          + name
                           + ': Removed '
                           + nify(report.getRemoved(), 'item', 'items')
                           + '.';
                   }
               } else {
                   statusline.innerHTML = 'Cleaned '
-                      + folder.Name
+                      + name
                       + ': Removed '
                       + nify(report.getRemoved(), 'item', 'items')
                       + ', encountered <a href="#" id="errorlink">'
