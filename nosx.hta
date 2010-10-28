@@ -29,13 +29,16 @@ Wed Oct 27 22:45:30 EDT 2010
       }
       div#controls {
           text-align: center;
-          margin-top: 40px;
+          margin-top: 20px;
       }
       div#controls input[type="text"] {
           width: 240px;
       }
       div#controls input[type="button"] {
           width: 70px;
+      }
+      div#controls div#group3 {
+          margin-top: 12px;
       }
       div#statusline {
           text-align: center;
@@ -82,8 +85,8 @@ Wed Oct 27 22:45:30 EDT 2010
           window.alert(note);
       }
 
-      function cleanFolderTree(folder, report) {
-          var fileEnum = new Enumerator(folder.Files);
+      function cleanFolderTree(folder, report, recurse) {
+      var fileEnum = new Enumerator(folder.Files);
           while ( ! fileEnum.atEnd() ) {
               var file = fileEnum.item();
               if ( file.Name == '.DS_Store' || file.Name.match(/^._/) ) {
@@ -107,8 +110,8 @@ Wed Oct 27 22:45:30 EDT 2010
                   } catch (err) {
                       report.logError(folder);
                   }
-              } else {
-                  cleanFolderTree(folder, report);
+              } else if ( recurse ) {
+                  cleanFolderTree(folder, report, true);
               }
               folderEnum.moveNext();
           }
@@ -144,7 +147,8 @@ Wed Oct 27 22:45:30 EDT 2010
       // Clean button event handler; entry point for the cleanFolderTree()
       // recursive function.
       function clean() {
-          var statusline  = document.getElementById('statusline');
+          var statusline = document.getElementById('statusline');
+          var recurse    = document.getElementById('recurse');
 
           var path = document.getElementById('target').value;
           if ( fs.FolderExists(path) ) {
@@ -154,7 +158,8 @@ Wed Oct 27 22:45:30 EDT 2010
               var folder = fs.GetFolder(path);
               var report = new StatusReport();
 
-              cleanFolderTree(folder, report);
+              cleanFolderTree(folder, report, recurse.checked);
+
 
               // Good grammar.  Its importent.
               if ( report.getErrors() == 0 ) {
@@ -197,14 +202,20 @@ Wed Oct 27 22:45:30 EDT 2010
   <body>
     <p>Select a folder from which to remove the junk files
     (<code>.DS_Store</code>, <code>.Trashes</code>, <code>._*</code>) left
-    on shared media by OS X.  <a
-    href="http://www.westwind.com/reference/os-x/invisibles.html">Click
-    here</a> for information about these files.</p>
+    on shared media by OS X.</p>
 
     <div id="controls">
-      <input type="text" id="target" value="" />
-      <input type="button" id="browse" value="Browse" onclick="browse();" />
-      <input type="button" id="clean" value="Clean!" onclick="clean();" />
+      <div id="group1">
+        <input type="text" id="target" value="" />
+        <input type="button" id="browse" value="Browse" onclick="browse();" />
+      </div>
+      <div id="group2">
+        <input type="checkbox" id="recurse" value="recurse" checked="checked" />
+        <label for="recurse">Subfolders too</label>
+      </div>
+      <div id="group3">
+        <input type="button" id="clean" value="Clean!" onclick="clean();" />
+      </div>
     </div>
 
     <div id="statusline"></div>
