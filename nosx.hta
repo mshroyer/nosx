@@ -89,7 +89,7 @@ Wed Oct 27 22:45:30 EDT 2010
       var fileEnum = new Enumerator(folder.Files);
           while ( ! fileEnum.atEnd() ) {
               var file = fileEnum.item();
-              if ( file.Name == '.DS_Store' || file.Name.match(/^._/) ) {
+              if ( file.Name == '.DS_Store' || file.Name.match(/^\._/) ) {
                   try {
                       file.Delete(true);
                       report.logRemoved(file);
